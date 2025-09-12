@@ -1,125 +1,221 @@
-// js/app.js — cleaned + home/search/library wired
-
-// Imports (once)
 import { searchTracks, getTrending } from "./search.js";
 import {
-  playSingle, onPlayerChange, togglePlay,
-  next as nextTrack, prev as prevTrack, setQueue,
-  seekRatio, setVolume
+  playSingle,
+  onPlayerChange,
+  togglePlay,
+  next as nextTrack,
+  prev as prevTrack,
+  setQueue,
+  seekRatio,
+  setVolume, getSnapshot
 } from "./player.js";
 import { toggleLike, getLikedTracks, getRecentPlays } from "./library.js";
 import { db } from "./db.js";
 
-// Mood chips
+/* ---------- constants ---------- */
 const MOOD_CHIPS = [
-  "Podcasts", "Relax", "Sad", "Sleep", "Romance",
-  "Feel good", "Energize", "Party", "Commute", "Workout", "Focus"
+  "Podcasts",
+  "Relax",
+  "Sad",
+  "Sleep",
+  "Romance",
+  "Feel good",
+  "Energize",
+  "Party",
+  "Commute",
+  "Workout",
+  "Focus",
 ];
+const FALLBACK_COVER =
+  'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96"><rect width="100%" height="100%" fill="%23222"/></svg>';
 
 console.log("App initialized");
 
-// Elements
+/* ---------- elements ---------- */
 const appEl = document.getElementById("app");
 const input = document.getElementById("searchInput");
+
 const nowTitleEl = document.getElementById("nowTitle");
+const nowArtistEl = document.getElementById("nowArtist");
+const nowCoverEl = document.getElementById("nowCover");
+
 const playPauseBtn = document.getElementById("playPauseBtn");
 const prevBtn = document.getElementById("prevBtn");
 const nextBtn = document.getElementById("nextBtn");
+
 const seekEl = document.getElementById("seek");
-const currEl = document.getElementById("currTime")
+const currEl = document.getElementById("currTime");
 const totEl = document.getElementById("totTime");
-const volEl = document.getElementById("vol")
-const nowCoverEl = document.getElementById("nowCover");
-const nowArtistEl = document.getElementById("nowArtist")
-// Footer controls
-if (playPauseBtn && prevBtn && nextBtn) {
-  playPauseBtn.addEventListener("click", togglePlay);
-  prevBtn.addEventListener("click", prevTrack);
-  nextBtn.addEventListener("click", nextTrack);
-}
-// Seek by dragging (range 0–100)
-seekEl?.addEventListener("input", e => {
+const volEl = document.getElementById("vol");
+
+/* ---------- footer controls ---------- */
+playPauseBtn?.addEventListener("click", togglePlay);
+prevBtn?.addEventListener("click", prevTrack);
+nextBtn?.addEventListener("click", nextTrack);
+
+seekEl?.addEventListener("input", (e) => {
   const pct = Number(e.target.value) / 100;
   seekRatio(pct);
 });
 
-// Volume: initialize from saved value, then update on input
 const savedVol = parseFloat(localStorage.getItem("vol"));
 if (volEl) volEl.value = Number.isFinite(savedVol) ? String(savedVol) : "1";
-volEl?.addEventListener("input", e => {
-  const v = parseFloat(e.target.value);
-  setVolume(v);
+volEl?.addEventListener("input", (e) => setVolume(parseFloat(e.target.value)));
+
+nowCoverEl?.addEventListener("click", () => {
+  location.hash = "#now";
 });
 
-const fmt = s => {
+/* ---------- utils ---------- */
+const debounce = (fn, ms = 350) => {
+  let t;
+  return (...args) => {
+    clearTimeout(t);
+    t = setTimeout(() => fn(...args), ms);
+  };
+};
+const fmt = (s) => {
   s = Math.max(0, Math.floor(s || 0));
   const m = Math.floor(s / 60);
-  const sec = String (s % 60).padStart(2, "0");
-  return `${m} : ${sec}`
-}
-const FALLBACK_COVER = 'http://www.w3.org/2000/svg width="96" height="96"><rect width="100%" height="100%" fill="%23222"/></svg>';
-// Update footer on player state
-onPlayerChange(({ track, playing,currentTime, duration }) => {
-  if (seekEl && isFinite(duration) && duration > 0){
-    seekEl.value = String((currentTime / duration) * 100);
-  } else if (seekEl){
-  seekEl.value = "0"
-  }
-  if (currEl) currEl.textContent = fmt(currentTime);
-  if (totEl) totEl.textContent = isFinite(duration) ? fmt(duration) :"0:00"
-  if (nowTitleEl) {
-    nowTitleEl.textContent = track
-      ? `${track.title} — ${track.artist || ""}`
-      : "No track playing";
-  }
-  if (nowArtistEl) nowArtistEl.textContent = track?.artist || ""
-  if (nowCoverEl) nowCoverEl.src = (track?.artwork_url && track.artwork_url.startsWith("http"))
-    ? track.artwork_url : FALLBACK_COVER;
-  if (playPauseBtn) playPauseBtn.textContent = playing ? "⏸" : "▶️";
-});
-
-// Utils
-const debounce = (fn, ms = 350) => {
-  let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+  const sec = String(s % 60).padStart(2, "0");
+  return `${m}:${sec}`;
 };
 
+/* ---------- footer: reflect player state ---------- */
+onPlayerChange(({ track, playing, currentTime, duration }) => {
+  if (seekEl && isFinite(duration) && duration > 0) {
+    seekEl.value = String((currentTime / duration) * 100);
+  } else if (seekEl) {
+    seekEl.value = "0";
+  }
+  if (currEl) currEl.textContent = fmt(currentTime);
+  if (totEl) totEl.textContent = isFinite(duration) ? fmt(duration) : "0:00";
+
+  if (nowTitleEl)
+    nowTitleEl.textContent = track ? track.title : "No track playing";
+  if (nowArtistEl) nowArtistEl.textContent = track?.artist || "";
+  if (nowCoverEl)
+    nowCoverEl.src =
+      track?.artwork_url && track.artwork_url.startsWith("http")
+        ? track.artwork_url
+        : FALLBACK_COVER;
+
+  if (playPauseBtn) playPauseBtn.textContent = playing ? "⏸" : "▶️";
+});
+// Re-render #now when track/queue/playing changes (ignore timeupdates)
+let __nowKey = "";
+onPlayerChange((s) => {
+  if (!location.hash.toLowerCase().startsWith("#now")) return;
+  const qlen = (s.queueLength ?? s.queue?.length ?? 0);
+  const key = `${s.track?.id || ""}|${s.index}|${qlen}|${s.playing ? 1 : 0}`;
+  if (key !== __nowKey) { __nowKey = key; renderNow(); }
+});
 
 
-// -------- Search Results --------
+
+
+/* ---------- views ---------- */
+function renderNow() {
+  const snap = getSnapshot();
+  const t = snap.track;
+  const rest = snap.queue.slice(snap.index + 1);
+
+  if (!t) {
+    appEl.innerHTML = `<p>Nothing playing yet. Pick a song.</p>`;
+    return;
+  }
+
+  appEl.innerHTML = `
+    <div class="nowpage">
+      <div class="now-hero">
+        <img class="hero-art" src="${(t.artwork_url && t.artwork_url.startsWith('http')) ? t.artwork_url : FALLBACK_COVER}" alt="">
+        <div class="hero-meta">
+          <h1 class="hero-title">${t.title}</h1>
+          <div class="hero-sub">${t.artist || ""}</div>
+          <div class="hero-actions">
+            <button id="npPlay">${snap.playing ? "Pause" : "Play"}</button>
+            <button id="npNext">Next</button>
+          </div>
+        </div>
+      </div>
+
+      <h2 class="upnext-title">Up next</h2>
+      <div class="results">
+        ${rest
+      .map(
+        (r) => `
+          <div class="track">
+            <img src="${r.artwork_url || ""}" width="56" height="56" />
+            <div class="meta">
+              <div class="title">${r.title}</div>
+              <div class="artist">${r.artist || ""}</div>
+            </div>
+            <div class="actions">
+              <button class="play" data-id="${r.id}">Play</button>
+            </div>
+          </div>
+        `
+      )
+      .join("")}
+      </div>
+    </div>
+  `;
+
+  document.getElementById("npPlay")?.addEventListener("click", togglePlay);
+  document.getElementById("npNext")?.addEventListener("click", nextTrack);
+
+  // jump within current queue
+  appEl.querySelectorAll(".play").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.id;
+      const all = getSnapshot().queue;
+      const start = all.findIndex((x) => x.id === id);
+      if (start >= 0) setQueue(all, start);
+    });
+  });
+}
+
 async function renderResults(tracks) {
-  const likedIds = new Set((await db.likes.toArray()).map(x => x.trackId));
+  const likedIds = new Set((await db.likes.toArray()).map((x) => x.trackId));
 
   appEl.innerHTML = tracks.length
-    ? `<div class="results">${tracks.map(t => `
+    ? `<div class="results">${tracks
+      .map(
+        (t) => `
         <div class="track">
           <img src="${t.artwork_url || ""}" width="56" height="56" />
           <div class="meta">
             <div class="title">${t.title}</div>
             <div class="artist">${t.artist || ""}</div>
-            <a class="license" href="${t.license_url || "#"}" target="_blank">${t.license || ""}</a>
+            <a class="license" href="${t.license_url || "#"}" target="_blank">${t.license || ""
+          }</a>
           </div>
           <div class="actions">
-            <button class="like ${likedIds.has(t.id) ? "liked" : ""}" data-id="${t.id}" title="Like">
+            <button class="like ${likedIds.has(t.id) ? "liked" : ""
+          }" data-id="${t.id}" title="Like">
               ${likedIds.has(t.id) ? "❤️" : "🤍"}
             </button>
             <button class="play" data-id="${t.id}">Play</button>
           </div>
         </div>
-      `).join("")}</div>`
+      `
+      )
+      .join("")}</div>`
     : `<p>No results yet. Try “lofi”, “afrobeats”, “bollywood”, “remix”.</p>`;
 
-  // Play
-  appEl.querySelectorAll(".play").forEach(btn => {
+  // queue all results, start at clicked
+  appEl.querySelectorAll(".play").forEach((btn) => {
     btn.addEventListener("click", () => {
-      const track = tracks.find(x => x.id === btn.dataset.id);
-      if (track) playSingle(track);
+      const id = btn.dataset.id;
+      const start = tracks.findIndex((x) => x.id === id);
+      if (start >= 0) setQueue(tracks, start);
     });
   });
 
-  // Like
-  appEl.querySelectorAll(".like").forEach(btn => {
+  // like toggles
+  appEl.querySelectorAll(".like").forEach((btn) => {
     btn.addEventListener("click", async () => {
-      const track = tracks.find(x => x.id === btn.dataset.id);
+      const track = tracks.find((x) => x.id === btn.dataset.id);
       const liked = await toggleLike(track);
       btn.textContent = liked ? "❤️" : "🤍";
       btn.classList.toggle("liked", liked);
@@ -129,18 +225,15 @@ async function renderResults(tracks) {
 
 const runSearch = debounce(async (term) => {
   const results = await searchTracks(term);
-  console.log("results:", results.length);
   renderResults(results);
 }, 400);
 
-// Only search on the Search route
 if (input) {
   input.addEventListener("input", (e) => {
     if (isSearch()) runSearch(e.target.value);
   });
 }
 
-// -------- Library (Liked) --------
 async function renderLibrary() {
   const tracks = await getLikedTracks();
 
@@ -151,7 +244,9 @@ async function renderLibrary() {
          <button id="shuffleAll">Shuffle</button>
        </div>
        <div class="results">
-         ${tracks.map(t => `
+         ${tracks
+      .map(
+        (t) => `
            <div class="track">
              <img src="${t.artwork_url || ""}" width="56" height="56" />
              <div class="meta">
@@ -159,44 +254,52 @@ async function renderLibrary() {
                <div class="artist">${t.artist || ""}</div>
              </div>
              <div class="actions">
-               <button class="unlike" data-id="${t.id}" title="Remove">💔</button>
+               <button class="unlike" data-id="${t.id
+          }" title="Remove">💔</button>
                <button class="play" data-id="${t.id}">Play</button>
              </div>
            </div>
-         `).join("")}
+         `
+      )
+      .join("")}
        </div>`
     : `<p>No liked songs yet. Hit 🤍 on any track to save it here.</p>`;
 
-  // Play single
-  appEl.querySelectorAll(".play").forEach(btn => {
-    const track = tracks.find(x => x.id === btn.dataset.id);
-    btn.addEventListener("click", () => playSingle(track));
+  appEl.querySelectorAll(".play").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.id;
+      const start = tracks.findIndex((x) => x.id === id);
+      if (start >= 0) setQueue(tracks, start);
+    });
   });
 
-  // Un-like (remove)
-  appEl.querySelectorAll(".unlike").forEach(btn => {
-    const track = tracks.find(x => x.id === btn.dataset.id);
+  appEl.querySelectorAll(".unlike").forEach((btn) => {
+    const id = btn.dataset.id;
+    const t = tracks.find((x) => x.id === id);
     btn.addEventListener("click", async () => {
-      await toggleLike(track);
+      await toggleLike(t);
       renderLibrary();
     });
   });
 
-  // Batch
-  document.getElementById("playAll")?.addEventListener("click", () => setQueue(tracks, 0));
+  document
+    .getElementById("playAll")
+    ?.addEventListener("click", () => setQueue(tracks, 0));
   document.getElementById("shuffleAll")?.addEventListener("click", () => {
     const shuffled = [...tracks].sort(() => Math.random() - 0.5);
     setQueue(shuffled, 0);
   });
 }
 
-// -------- Home (chips + carousels) --------
+/* ---------- Home ---------- */
 const MOOD_CONTAINER_ID = "chips";
 function renderChips() {
   const chipsEl = document.getElementById(MOOD_CONTAINER_ID);
   if (!chipsEl) return;
-  chipsEl.innerHTML = MOOD_CHIPS.map(t => `<span class="chip" data-term="${t}">${t}</span>`).join("");
-  chipsEl.querySelectorAll(".chip").forEach(ch => {
+  chipsEl.innerHTML = MOOD_CHIPS.map(
+    (t) => `<span class="chip" data-term="${t}">${t}</span>`
+  ).join("");
+  chipsEl.querySelectorAll(".chip").forEach((ch) => {
     ch.addEventListener("click", () => {
       location.hash = "#search";
       if (input) input.value = ch.dataset.term;
@@ -205,8 +308,8 @@ function renderChips() {
   });
 }
 
-function renderCarousel(title, tracks, idPrefix){
-  if (!tracks.length) return "";
+function renderCarousel(title, tracks, idPrefix) {
+  const hasItems = Array.isArray(tracks) && tracks.length > 0;
   return `
     <div class="section">
       <h2>${title}</h2>
@@ -216,79 +319,142 @@ function renderCarousel(title, tracks, idPrefix){
       </div>
     </div>
     <div class="carousel" id="${idPrefix}">
-      ${tracks.map(t => `
-        <div class="card">
-          <img src="${t.artwork_url || ""}" alt="">
-          <div class="title">${t.title}</div>
-          <div class="sub">${t.artist || ""}</div>
-          <div class="actions" style="margin-top:8px">
-            <button class="play" data-id="${t.id}">Play</button>
-          </div>
-        </div>
-      `).join("")}
+      ${
+        hasItems
+          ? tracks.map(t => `
+              <div class="card">
+                <img src="${t.artwork_url || ""}" alt="">
+                <div class="title">${t.title}</div>
+                <div class="sub">${t.artist || ""}</div>
+                <div class="actions" style="margin-top:8px; display:flex; gap:8px;">
+                  <button class="play" data-id="${t.id}">Play</button>
+                  <button class="like" data-id="${t.id}" title="Like">🤍</button>
+                </div>
+              </div>
+            `).join("")
+          : `<div style="opacity:.7;padding:16px">Nothing to show right now.</div>`
+      }
     </div>
   `;
 }
 
+
+
 async function renderHome() {
-  const [recent, trending] = await Promise.all([ getRecentPlays(12), getTrending(18) ]);
+  let recent = [], trending = [];
+  try {
+    [recent, trending] = await Promise.all([
+      getRecentPlays(12).catch(() => []),
+      getTrending(18).catch(() => []),
+    ]);
+  } catch (_) {
+    recent = []; trending = [];
+  }
+
   appEl.innerHTML = `
-    ${renderCarousel("Listen again", recent, "carousel-recent")}
+    ${renderCarousel("Continue listening", recent, "carousel-recent")}
     ${renderCarousel("Quick picks", trending, "carousel-trend")}
   `;
+  const all = [...recent, ...trending];
 
-  // Play from cards
-  appEl.querySelectorAll(".play").forEach(btn => {
+// PLAY from cards (keep your current code or use this)
+appEl.querySelectorAll(".play").forEach(btn => {
+  btn.addEventListener("click", () => {
     const id = btn.dataset.id;
-    const all = [...recent, ...trending];
-    const track = all.find(x => x.id === id);
-    btn.addEventListener("click", () => track && playSingle(track));
+    const start = all.findIndex(x => x.id === id);
+    if (start >= 0) setQueue(all, start);
+  });
+});
+
+// LIKE from cards
+appEl.querySelectorAll(".like").forEach(btn => {
+  const id = btn.dataset.id;
+  const track = all.find(x => x.id === id);
+  if (!track) return;
+
+  btn.addEventListener("click", async () => {
+    const liked = await toggleLike(track);      // uses your library.js
+    btn.textContent = liked ? "❤️" : "🤍";
+    btn.classList.toggle("liked", liked);
+    window.dispatchEvent(new Event("likes-updated"));
+  });
+});
+
+  // Queue the combined list, start at clicked card
+  appEl.querySelectorAll(".play").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.id;
+      const all = [...recent, ...trending];
+      const start = all.findIndex(x => x.id === id);
+      if (start >= 0) setQueue(all, start);  // use queue so Next works
+    });
   });
 
   // Carousel arrows
-  const scrollBy = (id, dir=1) => {
+  const scrollBy = (id, dir = 1) => {
     const el = document.getElementById(id);
-    if (!el) return;
-    el.scrollBy({ left: dir * 360, behavior: "smooth" });
+    if (el) el.scrollBy({ left: dir * 360, behavior: "smooth" });
   };
-  appEl.querySelectorAll("[data-left]").forEach(b => b.addEventListener("click", () => scrollBy(b.dataset.left, -1)));
-  appEl.querySelectorAll("[data-right]").forEach(b => b.addEventListener("click", () => scrollBy(b.dataset.right, 1)));
+  appEl.querySelectorAll("[data-left]").forEach(b =>
+    b.addEventListener("click", () => scrollBy(b.dataset.left, -1)));
+  appEl.querySelectorAll("[data-right]").forEach(b =>
+    b.addEventListener("click", () => scrollBy(b.dataset.right, 1)));
 }
 
-// -------- Router --------
-// Router helpers
-const currentRoute = () => (location.hash || "#home").toLowerCase();
-const isHome    = () => currentRoute() === "#home";
-const isSearch  = () => currentRoute().startsWith("#search");
-const isLibrary = () => currentRoute().startsWith("#library");
 
-function renderRoute(){
-  if (isLibrary()) { renderLibrary(); return; }
-  if (currentRoute().startsWith("#search")) {
-    const term = (input?.value || "").trim();
-    term.length >= 2 ? runSearch(term) : (appEl.innerHTML = `<p>Type to search…</p>`);
+/* ---------- Router ---------- */
+const currentRoute = () => (location.hash || "#home").toLowerCase();
+const isHome = () => currentRoute() === "#home";
+const isSearch = () => currentRoute().startsWith("#search");
+const isLibrary = () => currentRoute().startsWith("#library");
+const isNow = () => currentRoute().startsWith("#now");
+window.addEventListener("recents-updated", () => {
+  if ((location.hash || "#home").toLowerCase() === "#home") {
+    renderHome();
+  }
+  if ((location.hash || "home").toLowerCase() ==="#library") {
+    renderLibrary();
+  }
+});
+
+function renderRoute() {
+  if (isLibrary()) {
+    renderLibrary();
     return;
   }
-  renderHome(); // default -> Home
+  if (isSearch()) {
+    const term = (input?.value || "").trim();
+    term.length >= 2
+      ? runSearch(term)
+      : (appEl.innerHTML = `<p>Type to search…</p>`);
+    return;
+  }
+  if (isNow()) {
+    renderNow();
+    return;
+  }
+  renderHome(); // default
 }
 
 window.addEventListener("hashchange", renderRoute);
-renderRoute();      // boot
-renderChips();  
+renderRoute();
+renderChips();
 
-
-/* ---------- Keyboard shortcuts (add below this line) ---------- */
+/* ---------- Keyboard shortcuts ---------- */
 let lastState = { currentTime: 0, duration: 0 };
-onPlayerChange(s => { lastState = s; });
+onPlayerChange((s) => {
+  lastState = s;
+});
 
 const seekBy = (sec) => {
   if (lastState.duration > 0) {
-    const next = Math.max(0, Math.min(lastState.currentTime + sec, lastState.duration));
-    const ratio = next / lastState.duration;
-    seekRatio(ratio);
+    const next = Math.max(
+      0,
+      Math.min(lastState.currentTime + sec, lastState.duration)
+    );
+    seekRatio(next / lastState.duration);
   }
 };
-
 const setVolBoth = (v) => {
   v = Math.max(0, Math.min(1, v));
   setVolume(v);
@@ -296,20 +462,36 @@ const setVolBoth = (v) => {
 };
 
 window.addEventListener("keydown", (e) => {
-  // don’t hijack typing in inputs
   const tag = document.activeElement?.tagName;
   if (tag === "INPUT" || tag === "TEXTAREA") return;
 
   switch (e.key) {
-    case " ": case "k": case "K":
+    case " ":
+    case "k":
+    case "K":
       e.preventDefault();
       togglePlay();
       break;
-    case "j": case "J": seekBy(-5); break;
-    case "l": case "L": seekBy(+5); break;
-    case "ArrowLeft":  seekBy(-2); break;
-    case "ArrowRight": seekBy(+2); break;
-    case "ArrowUp":    setVolBoth((parseFloat(volEl?.value || "1") || 1) + 0.05); break;
-    case "ArrowDown":  setVolBoth((parseFloat(volEl?.value || "1") || 1) - 0.05); break;
+    case "j":
+    case "J":
+      seekBy(-5);
+      break;
+    case "l":
+    case "L":
+      seekBy(+5);
+      break;
+    case "ArrowLeft":
+      seekBy(-2);
+      break;
+    case "ArrowRight":
+      seekBy(+2);
+      break;
+    case "ArrowUp":
+      setVolBoth((parseFloat(volEl?.value || "1") || 1) + 0.05);
+      break;
+    case "ArrowDown":
+      setVolBoth((parseFloat(volEl?.value || "1") || 1) - 0.05);
+      break;
   }
 });
+

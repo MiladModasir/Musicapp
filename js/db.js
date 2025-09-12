@@ -1,16 +1,14 @@
-// IndexedDB wrapper (for likes, playlists, history)
+// db.js  (browser ESM, no bundler)
+import Dexie from "https://cdn.jsdelivr.net/npm/dexie@3.2.4/dist/dexie.mjs";
 
-console.log("DB initialized");
-
-// TODO: set up IndexedDB or Dexie
-// js/db.js
-export const db = new Dexie("musicAppDB");
+export const db = new Dexie("music_app_v2"); // fresh name avoids old schema conflicts
 db.version(1).stores({
-  tracks: "id, title, artist, album, duration_ms, artwork_url, stream_url, license, license_url",
-  likes: "++id, trackId",
-  playlists: "++id, name, createdAt",
-  playlistTracks: "++id, playlistId, trackId, orderIndex, addedAt",
-  history: "++id, trackId, playedAt"
+  likes:   "trackId, ts",   // primary key = trackId
+  recents: "id, ts"         // primary key = id
 });
 
-console.log("DB initialized");
+console.log("DB initialized:", db.name);
+
+if (typeof window !== 'undefined') {
+  window.db = db; // dev-only helper so you can run: await db.likes.toArray()
+}

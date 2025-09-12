@@ -217,6 +217,13 @@ header h1{ margin-bottom: 12px; }
   padding: 8px 12px;
 }
 
+.nowpage .now-hero { display:flex; gap:24px; align-items:center; }
+.nowpage .hero-art  { width: 280px; height: 280px; object-fit: cover; border-radius: 16px; background:#222; }
+.nowpage .hero-title { margin: 0 0 6px; font-size: 1.8rem; }
+.nowpage .hero-sub   { opacity: .85; margin-bottom: 10px; }
+.nowpage .hero-actions { display:flex; gap:10px; }
+.upnext-title { margin: 24px 0 8px; }
+
 #playerBar .now-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
 #playerBar .now-meta { min-width: 0; }
 #playerBar #nowTitle {
@@ -229,6 +236,13 @@ header h1{ margin-bottom: 12px; }
 #playerBar .now-center { display:flex; align-items:center; gap:10px; }
 #playerBar .now-right  { display:flex; align-items:center; gap:8px; justify-self: end; }
 #playerBar input[type="range"] { width: 240px; }
+
+#nowCover {
+  width: 48px; height: 48px; object-fit: cover;
+  border-radius: 8px; background: #222;
+  cursor: pointer;
+}
+
 
 /* small screens: collapse a bit */
 @media (max-width: 720px) {
