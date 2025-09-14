@@ -2,6 +2,9 @@
 
 A lightweight, hackable music web app: search, play, like, queue, playlists, and a slick “Now Playing” view — all in vanilla JS + IndexedDB. Works fully offline for your library & playlists (data stored locally), streams audio from public APIs.
 
+
+live DEMO :(https://miladmodasir.github.io/Musicapp/)
+
 Features
 
 Home
