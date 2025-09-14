@@ -1,7 +1,7 @@
 // js/player.js
 import { recordPlay } from "./library.js";
 
-const APP_NAME   = "milad_music_app";
+const APP_NAME = "milad_music_app";
 const PERSIST_KEY = "player_state_v1";
 
 // ---------- single audio element ----------
@@ -33,13 +33,15 @@ function makeSnapshot(extra = {}) {
 }
 function emit(extra = {}) {
   const s = makeSnapshot(extra);
-  listeners.forEach(cb => cb(s));
+  listeners.forEach((cb) => cb(s));
   saveState(true); // throttle while emitting often (e.g., timeupdate)
 }
 
 export function onPlayerChange(cb) {
   listeners.add(cb);
-  try { cb(makeSnapshot()); } catch {}
+  try {
+    cb(makeSnapshot());
+  } catch {}
   return () => listeners.delete(cb);
 }
 
@@ -69,8 +71,11 @@ function saveState(throttled = false) {
 
 async function restoreFromStorage() {
   let parsed = null;
-  try { parsed = JSON.parse(localStorage.getItem(PERSIST_KEY) || "null"); } catch {}
-  if (!parsed || !Array.isArray(parsed.queue) || parsed.queue.length === 0) return;
+  try {
+    parsed = JSON.parse(localStorage.getItem(PERSIST_KEY) || "null");
+  } catch {}
+  if (!parsed || !Array.isArray(parsed.queue) || parsed.queue.length === 0)
+    return;
 
   queue = parsed.queue;
   index = Math.max(0, Math.min(parsed.index ?? 0, queue.length - 1));
@@ -81,7 +86,10 @@ async function restoreFromStorage() {
 
   // Prepare current track
   const t = queue[index];
-  if (!t) { emit(); return; }
+  if (!t) {
+    emit();
+    return;
+  }
 
   const url = await resolveStreamUrl(t);
   // a newer load may start while restoring
@@ -116,7 +124,11 @@ async function restoreFromStorage() {
         // Autoplay blocked: wait for first user gesture to resume
         playing = false;
         emit({ autoplayBlocked: true });
-        const resume = () => { togglePlay(); window.removeEventListener("click", resume); window.removeEventListener("keydown", resume); };
+        const resume = () => {
+          togglePlay();
+          window.removeEventListener("click", resume);
+          window.removeEventListener("keydown", resume);
+        };
         window.addEventListener("click", resume, { once: true });
         window.addEventListener("keydown", resume, { once: true });
       }
@@ -136,7 +148,8 @@ async function getAudiusHost() {
   try {
     const r = await fetch("https://api.audius.co");
     const { data } = await r.json();
-    __audiusHostCache = (Array.isArray(data) && data[0]) || "https://discoveryprovider.audius.co";
+    __audiusHostCache =
+      (Array.isArray(data) && data[0]) || "https://discoveryprovider.audius.co";
   } catch {
     __audiusHostCache = "https://discoveryprovider.audius.co";
   }
@@ -147,7 +160,8 @@ async function resolveStreamUrl(track) {
   if (!track) return "";
   if (track.stream_url) return track.stream_url;
 
-  const looksAudius = track.source === "audius" || String(track.id || "").startsWith("audius:");
+  const looksAudius =
+    track.source === "audius" || String(track.id || "").startsWith("audius:");
   if (looksAudius) {
     const host = await getAudiusHost();
     const id = track.source_id || String(track.id).replace(/^audius:/, "");
@@ -162,13 +176,17 @@ async function loadCurrentAndPlay() {
   const t = queue[index];
 
   if (!t) {
-    try { audio.pause(); } catch {}
+    try {
+      audio.pause();
+    } catch {}
     playing = false;
     emit();
     return;
   }
 
-  try { audio.pause(); } catch {}
+  try {
+    audio.pause();
+  } catch {}
 
   const url = await resolveStreamUrl(t);
   if (seq !== loadSeq) return;
@@ -179,7 +197,7 @@ async function loadCurrentAndPlay() {
     if (seq !== loadSeq) return;
 
     playing = true;
-    emit();                    // update UI immediately
+    emit(); // update UI immediately
     recordPlay(t).catch(() => {}); // recents -> Home refresh via event
     saveState(false);
   } catch {
@@ -197,7 +215,9 @@ export function setQueue(tracks, start = 0) {
   if (index >= 0) {
     loadCurrentAndPlay();
   } else {
-    try { audio.pause(); } catch {}
+    try {
+      audio.pause();
+    } catch {}
     playing = false;
     emit();
     saveState(false);
@@ -210,10 +230,21 @@ export function playSingle(track) {
 }
 
 export function togglePlay() {
-  if (!audio.src) { if (index >= 0) loadCurrentAndPlay(); return; }
+  if (!audio.src) {
+    if (index >= 0) loadCurrentAndPlay();
+    return;
+  }
   if (audio.paused) {
-    audio.play().then(() => { playing = true; emit(); saveState(false); })
-                .catch(() => { /* ignore */ });
+    audio
+      .play()
+      .then(() => {
+        playing = true;
+        emit();
+        saveState(false);
+      })
+      .catch(() => {
+        /* ignore */
+      });
   } else {
     audio.pause();
     playing = false;
@@ -223,14 +254,34 @@ export function togglePlay() {
 }
 
 export function next() {
-  if (index < queue.length - 1) { index++; loadCurrentAndPlay(); }
-  else { try { audio.pause(); } catch {} playing = false; emit(); saveState(false); }
+  if (index < queue.length - 1) {
+    index++;
+    loadCurrentAndPlay();
+  } else {
+    try {
+      audio.pause();
+    } catch {}
+    playing = false;
+    emit();
+    saveState(false);
+  }
 }
 
 export function prev() {
-  if (audio.currentTime > 3) { audio.currentTime = 0; emit(); saveState(true); return; }
-  if (index > 0) { index--; loadCurrentAndPlay(); }
-  else { audio.currentTime = 0; emit(); saveState(true); }
+  if (audio.currentTime > 3) {
+    audio.currentTime = 0;
+    emit();
+    saveState(true);
+    return;
+  }
+  if (index > 0) {
+    index--;
+    loadCurrentAndPlay();
+  } else {
+    audio.currentTime = 0;
+    emit();
+    saveState(true);
+  }
 }
 
 // ---------- seek / volume ----------
@@ -262,14 +313,37 @@ export function seekRatio(r) {
 }
 
 // ---------- audio events ----------
-audio.addEventListener("ended",          () => { next(); });
-audio.addEventListener("timeupdate",     () => { emit(); });
-audio.addEventListener("durationchange", () => { emit(); });
-audio.addEventListener("play",           () => { playing = true;  emit(); saveState(true); });
-audio.addEventListener("pause",          () => { playing = false; emit(); saveState(true); });
-audio.addEventListener("error",          () => { emit({ error: true }); saveState(true); });
+audio.addEventListener("ended", () => {
+  next();
+});
+audio.addEventListener("timeupdate", () => {
+  emit();
+});
+audio.addEventListener("durationchange", () => {
+  emit();
+});
+audio.addEventListener("play", () => {
+  playing = true;
+  emit();
+  saveState(true);
+});
+audio.addEventListener("pause", () => {
+  playing = false;
+  emit();
+  saveState(true);
+});
+audio.addEventListener("error", () => {
+  emit({ error: true });
+  saveState(true);
+});
 // helpful when restoring before metadata
-audio.addEventListener("loadedmetadata", () => { emit(); });
+audio.addEventListener("loadedmetadata", () => {
+  emit();
+});
 
 // ---------- boot: try to restore last session ----------
-(async () => { try { await restoreFromStorage(); } catch {} })();
+(async () => {
+  try {
+    await restoreFromStorage();
+  } catch {}
+})();

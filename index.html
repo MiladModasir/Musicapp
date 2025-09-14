@@ -1,27 +1,40 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <link rel="icon" href="data:,">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>My Music App</title>
   <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/core.css">
+  <link rel="stylesheet" href="css/home.css">
+  <link rel="stylesheet" href="css/library.css">
+  <link rel="stylesheet" href="css/likes.css">
+  <link rel="stylesheet" href="css/responsive.css">
 </head>
+
 <body>
   <!-- Header -->
   <header>
     <h1>My Music App</h1>
     <input type="text" id="searchInput" placeholder="Search music..." />
     <div id="chips" class="chips"></div>
+    <button id="navToggle" class="hamburger" aria-label="Menu" aria-expanded="false" aria-controls="sideNav">
+      <span></span><span></span><span></span>
+    </button>
   </header>
+  <div id="navBackdrop" class="nav-backdrop" hidden></div>
+
 
   <!-- Sidebar -->
-  <nav>
+  <nav id="sideNav" class="sidebar">
     <ul>
       <li><a href="#home">Home</a></li>
       <li><a href="#search">Search</a></li>
       <li><a href="#library">Library</a></li>
+      <li><a href="#playlists">Playlists</a></li>
     </ul>
   </nav>
 
@@ -29,37 +42,38 @@
   <main id="app"></main>
 
   <!-- Player -->
-<footer id="playerBar">
-  <!-- left: cover + meta -->
-  <div class="now-left">
-    <img id="nowCover" src="" alt="" width="48" height="48" />
-    <div class="now-meta">
-      <div id="nowTitle">No track playing</div>
-      <div id="nowArtist" class="subtle"></div>
+  <footer id="playerBar">
+    <!-- left: cover + meta -->
+    <div class="now-left">
+      <img id="nowCover" src="" alt="" width="48" height="48" />
+      <div class="now-meta">
+        <div id="nowTitle">No track playing</div>
+        <div id="nowArtist" class="subtle"></div>
+      </div>
     </div>
-  </div>
 
-  <!-- middle: transport -->
-  <div class="now-center">
-    <button id="prevBtn" title="Prev">⏮</button>
-    <button id="playPauseBtn" title="Play/Pause">▶️</button>
-    <button id="nextBtn" title="Next">⏭</button>
-  </div>
+    <!-- middle: transport -->
+    <div class="now-center">
+      <button id="prevBtn" title="Prev">⏮</button>
+      <button id="playPauseBtn" title="Play/Pause">▶️</button>
+      <button id="nextBtn" title="Next">⏭</button>
+    </div>
 
-  <!-- right: time + seek + volume -->
-  <div class="now-right">
-    <span id="currTime">0:00</span>
-    <input id="seek" type="range" min="0" max="100" step="0.1" value="0" title="Seek">
-    <span id="totTime">0:00</span>
-    <input id="vol" type="range" min="0" max="1" step="0.01" title="Volume">
-  </div>
-</footer>
+    <!-- right: time + seek + volume -->
+    <div class="now-right">
+      <span id="currTime">0:00</span>
+      <input id="seek" type="range" min="0" max="100" step="0.1" value="0" title="Seek">
+      <span id="totTime">0:00</span>
+      <input id="vol" type="range" min="0" max="1" step="0.01" title="Volume">
+    </div>
+  </footer>
 
 
   <!-- Scripts -->
-<script src="https://cdn.jsdelivr.net/npm/dexie@4.0.7/dist/dexie.min.js"></script>
-<script type="module" src="./js/app.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dexie@4.0.7/dist/dexie.min.js"></script>
+  <script type="module" src="./js/app.js"></script>
 
 
 </body>
+
 </html>

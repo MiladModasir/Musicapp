@@ -25,7 +25,7 @@ export async function toggleLike(track) {
  */
 export async function getLikedTracks() {
   const rows = await db.likes.orderBy("ts").reverse().toArray();
-  return rows.map(r => r.track);
+  return rows.map((r) => r.track);
 }
 
 /**
@@ -43,5 +43,48 @@ export async function recordPlay(track) {
  */
 export async function getRecentPlays(limit = 12) {
   const rows = await db.recents.orderBy("ts").reverse().limit(limit).toArray();
-  return rows.map(r => r.track);
+  return rows.map((r) => r.track);
+}
+
+export async function createPlaylist(name) {
+  const id = await db.playlists.add({
+    name,
+    createdAt: Date.now(),
+    tracks: [],
+  });
+  return id;
+}
+export async function getPlaylists() {
+  return db.playlists.orderBy("createdAt").reverse().toArray();
+}
+export async function getPlaylist(id) {
+  return db.playlists.get(id);
+}
+export async function renamePlaylist(id, name) {
+  await db.playlists.update(id, { name });
+}
+export async function deletePlaylist(id) {
+  await db.playlists.delete(id);
+}
+export async function addToPlaylist(plId, track) {
+  plId = Number(plId);
+  const pl = await db.playlists.get(plId);
+  if (!pl) throw new Error("Playlist not found");
+
+  const tracks = Array.isArray(pl.tracks) ? [...pl.tracks] : [];
+
+  // de-dupe by stable id
+  const exists = tracks.some((t) => t.id === track.id);
+  if (exists) return false;
+
+  tracks.push(track);
+  await db.playlists.update(plId, { tracks, updated_at: Date.now() });
+  return true;
+}
+
+export async function removeFromPlaylist(id, trackId) {
+  const pl = await db.playlists.get(id);
+  if (!pl) return;
+  pl.tracks = pl.tracks.filter((t) => t.id !== trackId);
+  await db.playlists.put(pl);
 }

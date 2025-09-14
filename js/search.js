@@ -17,7 +17,8 @@ async function getAudiusHost() {
   try {
     const r = await fetch("https://api.audius.co");
     const { data } = await r.json();
-    __audiusHostCache = (Array.isArray(data) && data[0]) || "https://discoveryprovider.audius.co";
+    __audiusHostCache =
+      (Array.isArray(data) && data[0]) || "https://discoveryprovider.audius.co";
   } catch {
     __audiusHostCache = "https://discoveryprovider.audius.co";
   }
@@ -25,8 +26,13 @@ async function getAudiusHost() {
 }
 
 const pickAudiusArt = (artObj, userPicObj) =>
-  (artObj?.["1000x1000"] || artObj?.["480x480"] || artObj?.["150x150"] ||
-   userPicObj?.["1000x1000"] || userPicObj?.["480x480"] || userPicObj?.["150x150"] || "");
+  artObj?.["1000x1000"] ||
+  artObj?.["480x480"] ||
+  artObj?.["150x150"] ||
+  userPicObj?.["1000x1000"] ||
+  userPicObj?.["480x480"] ||
+  userPicObj?.["150x150"] ||
+  "";
 
 // Basic safe fetch with small timeout (avoids hanging UIs)
 async function safeFetchJson(url, opts = {}, timeoutMs = 8000) {
@@ -59,7 +65,7 @@ function normalizeAudius(track, host) {
     // we provide a stream so play works even if player.js doesn't resolve
     stream_url: `${host}/v1/tracks/${track.id}/stream?app_name=${APP_NAME}`,
     license: "",
-    license_url: ""
+    license_url: "",
   };
 }
 
@@ -76,7 +82,7 @@ function normalizeJamendo(item) {
     artwork_url: item.image || "",
     stream_url: item.audio || "",
     license: item.license || "",
-    license_url: item.license_ccurl || ""
+    license_url: item.license_ccurl || "",
   };
 }
 
@@ -84,18 +90,22 @@ function normalizeJamendo(item) {
 
 async function audiusTrending(limit = 12) {
   const host = await getAudiusHost();
-  const url = `${host}/v1/tracks/trending?limit=${encodeURIComponent(limit)}&app_name=${APP_NAME}`;
+  const url = `${host}/v1/tracks/trending?limit=${encodeURIComponent(
+    limit
+  )}&app_name=${APP_NAME}`;
   const json = await safeFetchJson(url);
   const data = json?.data || [];
-  return data.map(t => normalizeAudius(t, host));
+  return data.map((t) => normalizeAudius(t, host));
 }
 
 async function audiusSearch(query, limit = 20) {
   const host = await getAudiusHost();
-  const url = `${host}/v1/tracks/search?query=${encodeURIComponent(query)}&limit=${encodeURIComponent(limit)}&app_name=${APP_NAME}`;
+  const url = `${host}/v1/tracks/search?query=${encodeURIComponent(
+    query
+  )}&limit=${encodeURIComponent(limit)}&app_name=${APP_NAME}`;
   const json = await safeFetchJson(url);
   const data = json?.data || [];
-  return data.map(t => normalizeAudius(t, host));
+  return data.map((t) => normalizeAudius(t, host));
 }
 
 // ---- Jamendo API wrapper (optional) --------------------------
@@ -103,8 +113,12 @@ async function audiusSearch(query, limit = 20) {
 async function jamendoSearch(query, limit = 20) {
   if (!JAMENDO_CLIENT_ID) return []; // no key → skip
   const url =
-    `https://api.jamendo.com/v3.0/tracks/?client_id=${encodeURIComponent(JAMENDO_CLIENT_ID)}` +
-    `&format=json&limit=${encodeURIComponent(limit)}&search=${encodeURIComponent(query)}` +
+    `https://api.jamendo.com/v3.0/tracks/?client_id=${encodeURIComponent(
+      JAMENDO_CLIENT_ID
+    )}` +
+    `&format=json&limit=${encodeURIComponent(
+      limit
+    )}&search=${encodeURIComponent(query)}` +
     `&include=musicinfo+licenses&fuzzysearch=1&audioformat=mp31&imagesize=600`;
   const json = await safeFetchJson(url);
   const items = json?.results || [];
@@ -123,12 +137,14 @@ export async function searchTracks(term, limit = 20) {
   // run both in parallel (Jamendo may be disabled and return [])
   const [audius, jamendo] = await Promise.all([
     audiusSearch(q, limit).catch(() => []),
-    jamendoSearch(q, Math.max(0, Math.floor(limit / 2))).catch(() => [])
+    jamendoSearch(q, Math.max(0, Math.floor(limit / 2))).catch(() => []),
   ]);
 
   // de-dupe by id
   const map = new Map();
-  [...audius, ...jamendo].forEach(t => { if (t?.id) map.set(t.id, t); });
+  [...audius, ...jamendo].forEach((t) => {
+    if (t?.id) map.set(t.id, t);
+  });
   return Array.from(map.values());
 }
 

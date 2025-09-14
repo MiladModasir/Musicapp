@@ -1,0 +1,15 @@
+/* headings + bar */
+#app > h2{
+  font-size:22px;margin:4px 4px 10px;
+}
+#app .actions{margin:10px 2px}
+
+/* rows feel a bit denser in library */
+#app .results .track{padding:12px 14px}
+#app .results .track .title{font-weight:700}
+#app .results .track .artist{opacity:.9}
+
+/* buttons in rows */
+#app .results .track .unlike{border-color:rgba(255,255,255,.15)}
+#app .results .track .play{background:linear-gradient(135deg,var(--accent),var(--accent-2));border:0}
+#app .results .track .add{border:1px dashed var(--line)}
