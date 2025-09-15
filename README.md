@@ -4,9 +4,8 @@ Search, play, like, queue, and build playlists in a fast, hackable **vanilla‑J
 
 [**Live Demo** → miladmodasir.github.io/Musicapp](https://miladmodasir.github.io/Musicapp/)
 
-<p align="center">
-  <img alt="Milad Music screenshot" src="assets/icon.svg" width="72" />
-</p>
+![App Screenshot](./assets/screenshot.png)
+
 
 ---
 

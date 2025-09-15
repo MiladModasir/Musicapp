@@ -11,6 +11,25 @@
   .row-actions{display:none}          /* hide the left/right arrows */
   .hero-art{width:240px;height:240px;border-radius:18px}
 }
+/* --- Tablet (iPad) footer cleanup --- */
+/* iPad portrait is ~768–1024px wide. Adjust if you need. */
+@media (min-width: 768px) and (max-width: 1080px) {
+  /* keep left (art/title) + center (controls + seek), hide right (volume) */
+  #playerBar { grid-template-columns: 1fr auto; }
+
+  /* hide the volume chunk on tablets */
+  #playerBar .now-right { display: none; }
+
+  /* hide numeric time labels; keep the seek slider */
+  #playerBar #currTime,
+  #playerBar #totTime { display: none; }
+
+  /* tighten spacing and let the seek bar grow nicely */
+  #playerBar .now-center { gap: 6px; }
+  #playerBar input[type="range"] {
+    width: clamp(180px, 45vw, 520px);
+  }
+}
 
 /* Phones */
 @media (max-width: 640px){
