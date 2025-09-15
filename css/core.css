@@ -56,7 +56,7 @@ button.primary{background:linear-gradient(135deg,var(--accent),var(--accent-2));
 button.ghost{background:transparent;border:1px dashed var(--line);color:#cbd3e4}
 
 /* Track rows (used in search/library/now) */
-.results{display:grid;gap:10px}
+.results{display:flex; flex-direction:column; gap: 10px}
 .track{
   display:flex;align-items:center;gap:14px;
   padding:12px 14px;border-radius:var(--radius);
@@ -68,7 +68,7 @@ button.ghost{background:transparent;border:1px dashed var(--line);color:#cbd3e4}
 .track:hover{border-color:rgba(255,255,255,.15)}
 .track img{width:56px;height:56px;border-radius:12px;object-fit:cover;background:#0c0f15}
 .track .meta{flex:1;min-width:0}
-.track .title{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.track .title{font-weight:700;overflow:hidden;text-overflow:ellipsis}
 .track .artist{color:var(--muted);font-size:13px;margin-top:2px}
 .track .actions{display:flex;gap:8px;align-items:center}
 

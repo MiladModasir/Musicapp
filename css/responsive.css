@@ -22,4 +22,10 @@
   .track{padding:10px 12px}
   .track img{width:48px;height:48px;border-radius:10px}
   .chip{padding:7px 10px}
+  #playerBar{
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+}
 }
