@@ -158,7 +158,7 @@ footer{
 /* compact layout on phones */
 @media (max-width: 720px){
   #playerBar{ grid-template-columns: 1fr auto; }
-  #playerBar .now-right{ opacity: 0;}
+  #playerBar .now-right{ display: none;}
   #playerBar input[type="range"]{ flex: 1; width: auto; }
 }
 
@@ -259,19 +259,13 @@ footer { padding-bottom: max(10px, env(safe-area-inset-bottom)); }
     /* display: flex;
     flex-direction: column;
     align-items: center; */
-    gap: 14px;
+    gap: 12px;
   }
   .now-hero {
     flex-direction: column;
     align-items: start;
   }
   .nowpage .hero-meta { width: 100%; }
-  #playerBar{
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  align-items: center;
-}
 }
 
 /* iPhone-ish widths: tighten spacing + cap even more */
@@ -286,8 +280,7 @@ footer { padding-bottom: max(10px, env(safe-area-inset-bottom)); }
   .track img { width: 48px; height: 48px; }
   #playerBar{
   display: flex;
-  flex-direction: column;
-  gap: 12px;
+  gap: 8px;
   align-items: center;
 }
 }
